@@ -1,4 +1,4 @@
-package io.github.ettoreleandrotognoli.binding;
+package com.github.ettoreleandrotognoli.binding;
 
 
 public interface ModelHolder<E> {

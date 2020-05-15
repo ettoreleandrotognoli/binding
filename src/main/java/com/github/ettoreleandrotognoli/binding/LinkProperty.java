@@ -1,4 +1,4 @@
-package io.github.ettoreleandrotognoli.binding;
+package com.github.ettoreleandrotognoli.binding;
 
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
