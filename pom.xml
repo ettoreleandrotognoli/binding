@@ -6,7 +6,7 @@
 
     <groupId>com.github.ettoreleandrotognoli</groupId>
     <artifactId>binding</artifactId>
-    <version>0.0.1-RC1</version>
+    <version>master-SNAPSHOT</version>
 
     <packaging>jar</packaging>
 

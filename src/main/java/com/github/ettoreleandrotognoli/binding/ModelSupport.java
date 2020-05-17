@@ -3,24 +3,43 @@ package com.github.ettoreleandrotognoli.binding;
 import org.jdesktop.beansbinding.AutoBinding.UpdateStrategy;
 import org.jdesktop.beansbinding.*;
 
+import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Objects;
 
 public class ModelSupport<E extends Model> implements ModelHolder<E> {
 
+    class Listener implements PropertyChangeListener {
+        @Override
+        public void propertyChange(PropertyChangeEvent evt) {
+            trigger.firePropertyChange(String.format("model.%s", evt.getPropertyName()), evt.getOldValue(), evt.getNewValue());
+        }
+    }
+
+    transient private final Listener listener = new Listener();
     transient private BindingGroup bindingGroup = null;
     transient private List<PropertyChangeListener> propertyLinks = null;
 
-    protected Object view;
+    protected final Object view;
+    protected final PropertyChangeTrigger trigger;
     protected E model;
 
-    public ModelSupport(Object view) {
+
+    public ModelSupport(Object view, PropertyChangeTrigger trigger) {
         this.view = view;
+        this.trigger = trigger;
     }
+
+    public ModelSupport(PropertyChangeTrigger viewAndTrigger) {
+        this.view = viewAndTrigger;
+        this.trigger = viewAndTrigger;
+    }
+
 
     @Override
     public E getModel() {
@@ -29,13 +48,19 @@ public class ModelSupport<E extends Model> implements ModelHolder<E> {
 
     @Override
     public void setModel(E model) {
+        E oldModel = this.model;
         if (this.bindingGroup != null) {
             this.destroyBind();
             this.unlinkProperties();
+            this.model.removePropertyChangeListener(listener);
         }
         this.model = model;
+        this.model.addPropertyChangeListener(listener);
         this.createBind();
         this.linkProperties();
+        if (!Objects.equals(oldModel, model)) {
+            trigger.firePropertyChange("model", oldModel, model);
+        }
     }
 
     private void createBind() {
@@ -57,17 +82,17 @@ public class ModelSupport<E extends Model> implements ModelHolder<E> {
             if (bindProperty == null) {
                 continue;
             }
-            ELProperty<Object, Object> elProperty = ELProperty.create("${model." + bindProperty.modelProperty() + "}");
-            BeanProperty<Object, Object> beanProperty = BeanProperty.create(bindProperty.componentProperty());
+            ELProperty<Object, Object> viewProperty = ELProperty.create("${model." + bindProperty.modelProperty() + "}");
+            BeanProperty<Object, Object> componentProperty = BeanProperty.create(bindProperty.componentProperty());
             UpdateStrategy updateStrategy = bindProperty.updateStrategy();
             Object component;
             try {
                 field.setAccessible(true);
                 component = field.get(this.view);
-                Binding<Object, Object, Object, Object> bind = Bindings.createAutoBinding(updateStrategy, this.view, elProperty, component, beanProperty);
+                Binding<Object, Object, Object, Object> bind = Bindings.createAutoBinding(updateStrategy, this.view, viewProperty, component, componentProperty);
                 this.bindingGroup.addBinding(bind);
-            } catch (IllegalArgumentException | IllegalAccessException e) {
-                e.printStackTrace();
+            } catch (IllegalArgumentException | IllegalAccessException ex) {
+                ex.printStackTrace();
             }
         }
     }
@@ -82,12 +107,15 @@ public class ModelSupport<E extends Model> implements ModelHolder<E> {
                 continue;
             }
             PropertyChangeListener listener = new PropertyLinker(this.view, method);
-            if (linkProperty.value() == null || linkProperty.value().equals("")) {
-                this.model.addPropertyChangeListener(listener);
-            } else {
-                this.model.addPropertyChangeListener(linkProperty.value(), listener);
+            for (String value : linkProperty.value()) {
+                if (value == null || value.equals("")) {
+                    this.model.addPropertyChangeListener(listener);
+                } else {
+                    this.model.addPropertyChangeListener(value, listener);
+                }
+                links.add(listener);
             }
-            links.add(listener);
+
         }
         this.propertyLinks = new ArrayList<>(links);
         links.clear();
