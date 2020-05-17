@@ -3,6 +3,7 @@ package com.github.ettoreleandrotognoli.binding;
 import org.jdesktop.beansbinding.AutoBinding.UpdateStrategy;
 import org.jdesktop.beansbinding.*;
 
+import javax.swing.event.EventListenerList;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
 import java.lang.reflect.Field;
@@ -21,6 +22,7 @@ public class ModelSupport<E extends Model> implements ModelHolder<E> {
         }
     }
 
+    transient private final EventListenerList listenerList = new EventListenerList();
     transient private final Listener listener = new Listener();
     transient private BindingGroup bindingGroup = null;
     transient private List<PropertyChangeListener> propertyLinks = null;
@@ -33,11 +35,27 @@ public class ModelSupport<E extends Model> implements ModelHolder<E> {
     public ModelSupport(Object view, PropertyChangeTrigger trigger) {
         this.view = view;
         this.trigger = trigger;
+        this.listenerList.add(PropertyChangeListener.class, listener);
     }
 
     public ModelSupport(PropertyChangeTrigger viewAndTrigger) {
         this.view = viewAndTrigger;
         this.trigger = viewAndTrigger;
+        this.listenerList.add(PropertyChangeListener.class, listener);
+    }
+
+    public void addPropertyChangeListener(PropertyChangeListener listener) {
+        this.listenerList.add(PropertyChangeListener.class, listener);
+        if (this.model != null) {
+            this.model.addPropertyChangeListener(listener);
+        }
+    }
+
+    public void removePropertyChangeListener(PropertyChangeListener listener) {
+        this.listenerList.remove(PropertyChangeListener.class, listener);
+        if (this.model != null) {
+            this.model.removePropertyChangeListener(listener);
+        }
     }
 
 
@@ -52,10 +70,14 @@ public class ModelSupport<E extends Model> implements ModelHolder<E> {
         if (this.bindingGroup != null) {
             this.destroyBind();
             this.unlinkProperties();
-            this.model.removePropertyChangeListener(listener);
+            for (PropertyChangeListener listener : listenerList.getListeners(PropertyChangeListener.class)) {
+                this.model.removePropertyChangeListener(listener);
+            }
         }
         this.model = model;
-        this.model.addPropertyChangeListener(listener);
+        for (PropertyChangeListener listener : listenerList.getListeners(PropertyChangeListener.class)) {
+            this.model.addPropertyChangeListener(listener);
+        }
         this.createBind();
         this.linkProperties();
         if (!Objects.equals(oldModel, model)) {
