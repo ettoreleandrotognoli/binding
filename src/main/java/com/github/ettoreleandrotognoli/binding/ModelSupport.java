@@ -87,6 +87,7 @@ public class ModelSupport<E extends Model> implements ModelHolder<E> {
 
     private void createBind() {
         this.bindingGroup = new BindingGroup();
+        this.bindBeans();
         this.bindProperties();
         this.bindingGroup.bind();
     }
@@ -98,9 +99,31 @@ public class ModelSupport<E extends Model> implements ModelHolder<E> {
 
     private void bindProperties() {
         Field fields[] = this.view.getClass().getDeclaredFields();
-
         for (Field field : fields) {
             BindProperty bindProperty = field.getAnnotation(BindProperty.class);
+            if (bindProperty == null) {
+                continue;
+            }
+            ELProperty<Object, Object> viewProperty = ELProperty.create("${model." + bindProperty.modelProperty() + "}");
+            ELProperty<Object, Object> componentProperty = ELProperty.create(bindProperty.componentProperty());
+            UpdateStrategy updateStrategy = bindProperty.updateStrategy();
+            Object component;
+            try {
+                field.setAccessible(true);
+                component = field.get(this.view);
+                Binding<Object, Object, Object, Object> bind = Bindings.createAutoBinding(updateStrategy, this.view, viewProperty, component, componentProperty);
+                this.bindingGroup.addBinding(bind);
+            } catch (IllegalArgumentException | IllegalAccessException ex) {
+                ex.printStackTrace();
+            }
+        }
+    }
+
+    private void bindBeans() {
+        Field fields[] = this.view.getClass().getDeclaredFields();
+
+        for (Field field : fields) {
+            BindBean bindProperty = field.getAnnotation(BindBean.class);
             if (bindProperty == null) {
                 continue;
             }

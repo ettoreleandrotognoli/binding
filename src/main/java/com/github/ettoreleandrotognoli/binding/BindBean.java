@@ -1,6 +1,7 @@
 package com.github.ettoreleandrotognoli.binding;
 
-import org.jdesktop.beansbinding.AutoBinding;
+
+import org.jdesktop.beansbinding.AutoBinding.UpdateStrategy;
 
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
@@ -9,10 +10,11 @@ import java.lang.annotation.Target;
 
 @Target(ElementType.FIELD)
 @Retention(RetentionPolicy.RUNTIME)
-public @interface BindProperty {
-    AutoBinding.UpdateStrategy updateStrategy() default AutoBinding.UpdateStrategy.READ_WRITE;
+public @interface BindBean {
 
-    String componentProperty() default "value";
+    UpdateStrategy updateStrategy() default UpdateStrategy.READ_WRITE;
+
+    String componentProperty() default "text";
 
     String modelProperty() default "${model}";
 
