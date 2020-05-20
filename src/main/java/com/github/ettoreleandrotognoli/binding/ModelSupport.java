@@ -82,6 +82,9 @@ public class ModelSupport<E extends Model> implements ModelHolder<E> {
         this.linkProperties();
         if (!Objects.equals(oldModel, model)) {
             trigger.firePropertyChange("model", oldModel, model);
+            for (PropertyChangeListener listener : listenerList.getListeners(PropertyChangeListener.class)) {
+                listener.propertyChange(new PropertyChangeEvent(model, "", oldModel, model));
+            }
         }
     }
 
